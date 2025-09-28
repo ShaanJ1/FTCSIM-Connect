@@ -25,7 +25,7 @@ Real-time syncing between VS Code and ftcsim.org's OnBot Java editor.
 2. Run `npm install`
 3. Start up the websocket server
 ```
-npm start -- --file /path/to/your/MyOpMode.java
+npm start -- --file /path/to/your/file.java
 ```
 
 ### 3. Usage
