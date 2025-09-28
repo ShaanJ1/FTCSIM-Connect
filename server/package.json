@@ -1,0 +1,26 @@
+{
+  "name": "ftcsim-connect-server",
+  "version": "1.0.0",
+  "description": "Node.js WebSocket server for FTCSIM-Connect",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "ftcsim",
+    "websocket",
+    "connect",
+    "editor",
+    "sync"
+  ],
+  "author": "Shaan",
+  "dependencies": {
+    "ws": "^8.14.2",
+    "chokidar": "^3.5.3",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
