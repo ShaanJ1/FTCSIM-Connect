@@ -37,8 +37,7 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "bridge.js",
-                "logger.js"
+                "bridge.js"
             ],
             "matches": [
                 "https://ftcsim.org/*"

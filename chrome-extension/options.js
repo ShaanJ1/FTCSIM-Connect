@@ -1,3 +1,12 @@
+const prefix = 'FTCSIM Connect [OPTIONS]';
+const logger = {
+    info: (...args) => console.info(prefix + " [INFO]:", ...args),
+    debug: (...args) => console.debug(prefix + " [DEBUG]:", ...args),
+    warn: (...args) => console.warn(prefix + " [WARN]:", ...args),
+    error: (...args) => console.error(prefix + " [ERROR]:", ...args),
+    log: (...args) => console.log(prefix + " [LOG]:", ...args)
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     const serverUrlInput = document.getElementById('serverUrl');
     const connectionStatus = document.getElementById('connectionStatus');
@@ -15,7 +24,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         verboseLoggingCheckbox.checked = !!result.verboseLogging;
-        console.log('FTCSIM Connect: Loaded verbose logging setting:', verboseLoggingCheckbox.checked);
+
+        logger.debug('Loaded verbose logging setting:', verboseLoggingCheckbox.checked);
     });
 
     updateConnectionStatus();
@@ -37,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const verboseLogging = verboseLoggingCheckbox.checked;
         chrome.storage.local.set({ verboseLogging: verboseLogging });
-        console.log('FTCSIM Connect: Saving verbose logging setting:', verboseLogging);
+        logger.debug('Saving verbose logging setting:', verboseLogging);
 
         chrome.runtime.sendMessage(
             {
@@ -62,7 +72,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     verboseLoggingCheckbox.addEventListener('change', function () {
         const verboseLogging = verboseLoggingCheckbox.checked;
-        console.log('FTCSIM Connect: Verbose logging toggled to:', verboseLogging);
+
+        logger.debug('Verbose logging toggled to:', verboseLogging);
+
         chrome.storage.local.set({ verboseLogging: verboseLogging });
 
         chrome.runtime.sendMessage({

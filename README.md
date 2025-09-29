@@ -1,11 +1,13 @@
 # FTCSIM-Connect
 
 Real-time syncing between VS Code and ftcsim.org's OnBot Java editor.
+
 ## Features
-- Bidirectional Sync: Changes in VS Code instantly appear on FTCSIM and vice versa, with settings to limit one way or another.
+- Sync Control: Be able to choose between bidirectional, client-only, and server-only syncing.
 - Instant Updates: Websocket based communication allows for instant changes on either end.
-- Smart Detection: The Chrome Extension seamlessly detects the site and connects to the server
+- Smart Detection: The Chrome Extension seamlessly detects the site and connects to the server.
 - Easy Setup: Simple setup process for both the extension and the server.
+- Auto Imports: Automatically creates placeholder import statements so VSCode won't complain about missing libraries.
 
 ## Quick Start
 
@@ -22,11 +24,24 @@ Real-time syncing between VS Code and ftcsim.org's OnBot Java editor.
 
 #### Method 2:
 1. Open a terminal and go into the server folder.
-2. Run `npm install`
-3. Start up the websocket server
+2. Run `npm install`.
+3. Start up the websocket server.
+```bash
+# Basic usage (uses settings from config.json file)
+npm start
 ```
-npm start -- --file /path/to/your/file.java
-```
+
+> #### Note: Command-line arguments take priority over your config file.
+
+### Options
+
+- `--port <number>` — Specify a custom port (e.g., 3000)
+- `--host <address>` — Specify a custom host (e.g., 0.0.0.0)
+- `--file <filename>` — Specify a watch file (e.g., MyOpMode.java)
+- `--sync-mode <mode>` — Set sync mode:
+  - `server-only`
+  - `client-only`
+  - `bidirectional`
 
 ### 3. Usage
 1. Open [ftcsim.org](https://ftcsim.org) in your browser.
