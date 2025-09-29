@@ -1,6 +1,7 @@
 # FTCSIM-Connect
 
 Real-time syncing between VS Code and ftcsim.org's OnBot Java editor.
+
 ## Features
 - Sync Control: Be able to choose between bidirectional, client-only, and server-only syncing.
 - Instant Updates: Websocket based communication allows for instant changes on either end.
@@ -41,7 +42,6 @@ npm start
   - `server-only`
   - `client-only`
   - `bidirectional`
-
 
 ### 3. Usage
 1. Open [ftcsim.org](https://ftcsim.org) in your browser.

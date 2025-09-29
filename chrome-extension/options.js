@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         verboseLoggingCheckbox.checked = !!result.verboseLogging;
+
         logger.debug('Loaded verbose logging setting:', verboseLoggingCheckbox.checked);
     });
 
@@ -71,7 +72,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     verboseLoggingCheckbox.addEventListener('change', function () {
         const verboseLogging = verboseLoggingCheckbox.checked;
+
         logger.debug('Verbose logging toggled to:', verboseLogging);
+
         chrome.storage.local.set({ verboseLogging: verboseLogging });
 
         chrome.runtime.sendMessage({
