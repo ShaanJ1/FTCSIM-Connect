@@ -6,7 +6,7 @@ Real-time syncing between VS Code and ftcsim.org's OnBot Java editor.
 - Instant Updates: Websocket based communication allows for instant changes on either end.
 - Smart Detection: The Chrome Extension seamlessly detects the site and connects to the server.
 - Easy Setup: Simple setup process for both the extension and the server.
-- Import Stub Injections: Auto creates placeholder import statements so VSCode won't complain about missing libraries.
+- Auto Imports: Automatically creates placeholder import statements so VSCode won't complain about missing libraries.
 
 ## Quick Start
 
