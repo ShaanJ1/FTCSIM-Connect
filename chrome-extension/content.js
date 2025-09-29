@@ -1,57 +1,17 @@
+const prefix = 'FTCSIM Connect [CONTENT]';
 const logger = {
-    verboseEnabled: false,
-    prefix: 'FTCSIM Connect:',
-
-    setVerboseLogging(enabled) {
-        this.verboseEnabled = !!enabled;
-        console.log(this.prefix, `Verbose logging ${this.verboseEnabled ? 'enabled' : 'disabled'}`);
-    },
-
-    log(...args) {
-        if (this.verboseEnabled) {
-            console.log(this.prefix, ...args);
-        }
-    },
-
-    warn(...args) {
-        console.warn(this.prefix, ...args);
-    },
-
-    error(...args) {
-        console.error(this.prefix, ...args);
-    },
-
-    debug(...args) {
-        if (this.verboseEnabled) {
-            console.debug(this.prefix, ...args);
-        }
-    },
-
-    info(...args) {
-        if (this.verboseEnabled) {
-            console.info(this.prefix, ...args);
-        } else if (args.length > 0) {
-            console.info(this.prefix, args[0]);
-        }
-    }
+    info: (...args) => console.info(prefix + " [INFO]:", ...args),
+    debug: (...args) => console.debug(prefix + " [DEBUG]:", ...args),
+    warn: (...args) => console.warn(prefix + " [WARN]:", ...args),
+    error: (...args) => console.error(prefix + " [ERROR]:", ...args),
+    log: (...args) => console.log(prefix + " [LOG]:", ...args)
 };
 
-chrome.storage.local.get(['verboseLogging'], (result) => {
-    logger.setVerboseLogging(!!result.verboseLogging);
-});
-
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === 'logging_status_changed' && typeof message.enabled === 'boolean') {
-        logger.setVerboseLogging(message.enabled);
-    }
-});
 
 class FTCSIMConnect {
     constructor() {
-        this.editor = null;
         this.serverPushInProgress = false;
         this.aceReady = false;
-        this.isConnected = false;
         this.lastContent = '';
         logger.log('FTCSIMConnect instance created');
         this.init();
@@ -139,40 +99,23 @@ class FTCSIMConnect {
     }
 
     injectBridgeScript() {
-        const loggerScript = document.createElement('script');
-        const loggerUrl = chrome.runtime.getURL('logger.js');
-        logger.log('Loading logger script from:', loggerUrl);
+        const script = document.createElement('script');
+        const bridgeUrl = chrome.runtime.getURL('bridge.js');
+        logger.log('Loading bridge script from:', bridgeUrl);
 
-        loggerScript.src = loggerUrl;
-        loggerScript.onload = () => {
-            logger.log('Logger script loaded successfully');
-
-            const script = document.createElement('script');
-            const bridgeUrl = chrome.runtime.getURL('bridge.js');
-            logger.log('Loading bridge script from:', bridgeUrl);
-
-            script.src = bridgeUrl;
-            script.onload = () => {
-                logger.log('Bridge script loaded successfully');
-                logger.debug('Bridge script will now be removed from DOM');
-                script.remove();
-            };
-            script.onerror = (error) => {
-                logger.error('Error loading bridge script:', error);
-            };
-
-            logger.debug('Appending bridge script to', document.head ? 'head' : 'documentElement');
-            (document.head || document.documentElement).appendChild(script);
-            logger.debug('Bridge script appended to DOM');
+        script.src = bridgeUrl;
+        script.onload = () => {
+            logger.log('Bridge script loaded successfully');
+            logger.debug('Bridge script will now be removed from DOM');
+            script.remove();
+        };
+        script.onerror = (error) => {
+            logger.error('Error loading bridge script:', error);
         };
 
-        loggerScript.onerror = (error) => {
-            logger.error('Error loading logger script:', error);
-        };
-
-        logger.debug('Appending logger script to', document.head ? 'head' : 'documentElement');
-        (document.head || document.documentElement).appendChild(loggerScript);
-        logger.debug('Logger script appended to DOM');
+        logger.debug('Appending bridge script to', document.head ? 'head' : 'documentElement');
+        (document.head || document.documentElement).appendChild(script);
+        logger.debug('Bridge script appended to DOM');
     }
 
     waitForAceEditor() {
@@ -278,52 +221,52 @@ class FTCSIMConnect {
                 try {
                     content = await this.requestAceContent();
                     if (errorCount > 0) {
-                        console.log('FTCSIM Connect: Content request succeeded after previous failures');
+                        logger.info('Content request succeeded after previous failures');
                         errorCount = 0;
                     }
                 } catch (contentError) {
                     errorCount++;
                     if (errorCount <= 3) {
-                        console.warn(`FTCSIM Connect: Content request failed (${errorCount}/3), will retry next interval`);
+                        logger.warn(`Content request failed (${errorCount}/3), will retry next interval`);
                         return;
                     } else {
-                        console.error('FTCSIM Connect: Multiple content request failures, continuing with last known content');
+                        logger.error('Multiple content request failures, continuing with last known content');
                         content = this.lastContent;
                     }
                 }
 
                 if (typeof content !== 'string') return;
                 if (content !== this.lastContent) {
-                    console.log(`FTCSIM Connect: Poll detected change, content=${content.length}, lastContent=${this.lastContent.length}`);
+                    logger.debug(`Poll detected change, content=${content.length}, lastContent=${this.lastContent.length}`);
                     this.lastContent = content;
-                    console.log('FTCSIM Connect: Poll detected change, forwarding to background');
+                    logger.debug('Poll detected change, forwarding to background');
                     chrome.runtime.sendMessage({
                         action: 'content_changed',
                         data: { content }
                     }, (response) => {
                         if (chrome.runtime.lastError) {
-                            console.error('FTCSIM Connect: Error sending polled change:', chrome.runtime.lastError);
+                            logger.error('Error sending polled change:', chrome.runtime.lastError);
                         } else {
-                            console.log('FTCSIM Connect: Forwarded polled content change to background');
+                            logger.debug('Forwarded polled content change to background');
                         }
                     });
                 }
             } catch (err) {
-                console.warn('FTCSIM Connect: Error in change monitor:', err);
+                logger.warn('Error in change monitor:', err);
             }
         }, intervalMs);
     }
 
     async updateEditorContent(content) {
-        console.log('FTCSIM Connect: updateEditorContent called with content length:', content ? content.length : 0);
+        logger.debug('updateEditorContent called with content length:', content ? content.length : 0);
 
         if (!this.aceReady) {
-            console.log('FTCSIM Connect: Editor not ready yet, deferring update...');
+            logger.debug('Editor not ready yet, deferring update...');
             await this.waitForAceEditor();
         }
 
         if (!this.aceReady) {
-            console.warn('FTCSIM Connect: Still no editor after waiting; skipping update');
+            logger.warn('Still no editor after waiting; skipping update');
             return;
         }
 
@@ -331,15 +274,15 @@ class FTCSIMConnect {
         try {
             const live = await this.requestAceContent();
             if (typeof live === 'string') currentContent = live;
-            console.log(`FTCSIM Connect: Editor content differs from lastContent: ${currentContent !== this.lastContent}`);
+            logger.debug(`Editor content differs from lastContent: ${currentContent !== this.lastContent}`);
         } catch { }
-        console.log('FTCSIM Connect: Current editor content length:', currentContent.length);
+        logger.debug('Current editor content length:', currentContent.length);
 
         if (currentContent !== content) {
-            console.log('FTCSIM Connect: Content is different, updating editor');
+            logger.debug('Content is different, updating editor');
             try {
                 this.serverPushInProgress = true;
-                console.log('FTCSIM Connect: Setting serverPushInProgress = true');
+                logger.debug('Setting serverPushInProgress = true');
                 await new Promise((resolve) => {
                     const onMsg = (event) => {
                         if (event.source !== window) return;
@@ -348,13 +291,13 @@ class FTCSIMConnect {
                             window.removeEventListener('message', onMsg);
                             if (msg.success) {
                                 this.lastContent = content;
-                                console.log('FTCSIM Connect: Editor update complete (via bridge)');
+                                logger.debug('Editor update complete (via bridge)');
                             } else {
-                                console.error('FTCSIM Connect: Bridge failed to set content:', msg.error);
+                                logger.error('Bridge failed to set content:', msg.error);
                             }
                             setTimeout(() => {
                                 this.serverPushInProgress = false;
-                                console.log('FTCSIM Connect: Cleared serverPushInProgress guard');
+                                logger.debug('Cleared serverPushInProgress guard');
                             }, 100);
                             resolve();
                         }
@@ -363,12 +306,12 @@ class FTCSIMConnect {
                     window.postMessage({ type: 'SET_ACE_CONTENT', content }, '*');
                 });
             } catch (error) {
-                console.error('FTCSIM Connect: Error updating editor content:', error);
+                logger.error('Error updating editor content:', error);
                 this.serverPushInProgress = false;
-                console.log('FTCSIM Connect: Cleared serverPushInProgress guard (error path)');
+                logger.debug('Cleared serverPushInProgress guard (error path)');
             }
         } else {
-            console.log('FTCSIM Connect: Content is identical, no update needed');
+            logger.debug('Content is identical, no update needed');
         }
     }
 
@@ -396,13 +339,13 @@ class FTCSIMConnect {
             };
 
             window.addEventListener('message', onMsg);
-            console.log('FTCSIM Connect: Requesting ACE content with ID:', requestId);
+            logger.debug('Requesting ACE content with ID:', requestId);
             window.postMessage({ type: 'REQUEST_ACE_CONTENT', requestId }, '*');
 
             setTimeout(() => {
                 if (!done) {
                     window.removeEventListener('message', onMsg);
-                    console.error('FTCSIM Connect: ACE content request timed out for ID:', requestId);
+                    logger.error('ACE content request timed out for ID:', requestId);
                     reject(new Error(`ACE content request timed out (ID: ${requestId})`));
                 }
             }, 1000);
@@ -439,28 +382,28 @@ window.addEventListener('message', (event) => {
         const lastContentLen = window.ftcsimConnect?.lastContent?.length || 0;
         if (window.ftcsimConnect) {
             const newContent = typeof msg.content === 'string' ? msg.content : '';
-            console.log(`FTCSIM Connect: ACE_CONTENT_CHANGED: updating lastContent ${lastContentLen} → ${contentLen}`);
+            logger.debug(`ACE_CONTENT_CHANGED: updating lastContent ${lastContentLen} → ${contentLen}`);
             window.ftcsimConnect.lastContent = newContent;
         }
         if (window.ftcsimConnect?.serverPushInProgress) {
-            console.log(`FTCSIM Connect: Ignoring ACE change from server push (len=${contentLen})`);
+            logger.debug(`Ignoring ACE change from server push (len=${contentLen})`);
             return;
         }
-        console.log('FTCSIM Connect: Forwarding ACE change to background, length:', contentLen);
+        logger.debug('Forwarding ACE change to background, length:', contentLen);
         chrome.runtime.sendMessage({
             action: 'content_changed',
             data: { content: msg.content }
         }, (response) => {
             if (chrome.runtime.lastError) {
-                console.error('FTCSIM Connect: Error sending message to background:', chrome.runtime.lastError);
+                logger.error('Error sending message to background:', chrome.runtime.lastError);
             } else {
-                console.log('FTCSIM Connect: Forwarded content change to background successfully');
+                logger.debug('Forwarded content change to background successfully');
             }
         });
     }
 });
 
-console.log('FTCSIM Connect: Content script loaded, document.readyState =', document.readyState);
+logger.info('Content script loaded, document.readyState =', document.readyState);
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

@@ -1,3 +1,12 @@
+const prefix = 'FTCSIM Connect [POPUP]';
+const logger = {
+    info: (...args) => console.info(prefix + " [INFO]:", ...args),
+    debug: (...args) => console.debug(prefix + " [DEBUG]:", ...args),
+    warn: (...args) => console.warn(prefix + " [WARN]:", ...args),
+    error: (...args) => console.error(prefix + " [ERROR]:", ...args),
+    log: (...args) => console.log(prefix + " [LOG]:", ...args)
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     const statusElement = document.getElementById('status');
     const indicatorElement = document.getElementById('indicator');
@@ -7,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     optionsLink.addEventListener('click', function (e) {
         e.preventDefault();
-        console.log('FTCSIM Connect: Opening options page');
+        logger.debug('Opening options page');
         chrome.runtime.openOptionsPage();
     });
 
@@ -74,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     chrome.runtime.sendMessage({ action: 'get_status' }, (response) => {
         if (chrome.runtime.lastError) {
-            console.error('Error getting initial status:', chrome.runtime.lastError);
+            logger.error('Error getting initial status:', chrome.runtime.lastError);
             updateUi('error');
         } else {
             updateUi(response.status);

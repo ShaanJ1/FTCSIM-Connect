@@ -1,0 +1,17 @@
+{
+  "server": {
+    "host": "localhost",
+    "port": 8080
+  },
+  "watchFile": "example-code.java",
+  "sync": {
+    "mode": "bidirectional"
+  },
+  "imports": [
+    "com.qualcomm.robotcore.eventloop.opmode.LinearOpMode",
+    "com.qualcomm.robotcore.hardware.DcMotor",
+    "com.qualcomm.robotcore.hardware.ColorSensor",
+    "com.qualcomm.robotcore.hardware.DistanceSensor",
+    "com.qualcomm.robotcore.hardware.BNO055IMU"
+  ]
+}

@@ -1,5 +1,3 @@
-// fix: sometimes creates a new .java file instead of using the watchfile
-
 const WebSocket = require('ws');
 const chokidar = require('chokidar');
 const fs = require('fs');
@@ -16,8 +14,7 @@ const argv = yargs
     .option('file', {
         alias: 'f',
         type: 'string',
-        description: 'File to watch for changes (required)',
-        demandOption: true
+        description: 'File to sync with ftcsim\'s java editor'
     })
     .option('host', {
         alias: 'h',
@@ -25,19 +22,63 @@ const argv = yargs
         default: 'localhost',
         description: 'Host to bind the server to'
     })
+    .option('sync-mode', {
+        alias: 's',
+        type: 'string',
+        choices: ['bidirectional', 'server-only', 'client-only'],
+        default: 'bidirectional',
+        description: 'Sync direction: bidirectional, server-only, or client-only'
+    })
     .help()
     .argv;
 
 class FTCSIMConnectServer {
     constructor(options) {
-        this.port = options.port;
-        this.host = options.host;
-        this.watchFile = path.resolve(options.file);
+        this.config = this.loadConfig(path.resolve('config.json'));
+
+        // Prioritize command-line args, config file, then defaults
+        this.port = options.port || (this.config.server && this.config.server.port) || 8080;
+        this.host = options.host || (this.config.server && this.config.server.host) || 'localhost';
+        this.syncMode = options.syncMode || (this.config.sync && this.config.sync.mode) || 'bidirectional';
+        this.watchFile = options.file || this.config.watchFile;
+
         this.wss = null;
         this.watcher = null;
         this.clients = new Set();
         this.lastContent = '';
         this.isUpdatingFromRemote = false;
+
+        if (!this.watchFile) {
+            console.error('❌ No watch file specified. Use --file <filePath> or set "watchFile" in config.json');
+            process.exit(1);
+        }
+
+        this.watchFile = path.resolve(this.watchFile);
+    }
+
+    loadConfig(configPath) {
+        let config = {};
+        try {
+            if (fs.existsSync(configPath)) {
+                const configData = fs.readFileSync(configPath, 'utf8');
+                config = JSON.parse(configData);
+
+                if (config.sync && config.sync.mode) {
+                    this.syncMode = config.sync.mode;
+                }
+                if (config.server) {
+                    this.port = config.server.port || this.port;
+                    this.host = config.server.host || this.host;
+                }
+
+                console.log(`📋 Configuration loaded from ${configPath}`);
+                console.log(`🔄 Sync mode: ${this.syncMode}`);
+                return config;
+            }
+        } catch (error) {
+            console.error('❌ Error loading configuration:', error);
+        }
+        return config;
     }
 
     async start() {
@@ -46,21 +87,19 @@ class FTCSIMConnectServer {
                 console.error(`❌ Watch file does not exist: ${this.watchFile}`);
                 process.exit(1);
             }
-
             this.lastContent = fs.readFileSync(this.watchFile, 'utf8');
-            console.log(`📁 Watching file: ${this.watchFile}`);
 
             this.startWebSocketServer();
-
             this.startFileWatcher();
 
             console.log(`🚀 FTCSIM-Connect Server started`);
             console.log(`📡 WebSocket server running on ws://${this.host}:${this.port}`);
             console.log(`📝 Watching file: ${this.watchFile}`);
-            console.log(`⏹️  Press Ctrl+C to stop`);
+            console.log(`🔄 Sync mode: ${this.syncMode}`);
+            console.log(`🔌 Press Ctrl + C to stop`);
 
         } catch (error) {
-            console.error('❌ Failed to start server:', error);
+            console.error('❌ Couldn\'t start server:', error);
             process.exit(1);
         }
     }
@@ -78,6 +117,12 @@ class FTCSIMConnectServer {
             this.sendToClient(ws, {
                 type: 'file_content_update',
                 content: this.lastContent,
+                timestamp: Date.now()
+            });
+
+            this.sendToClient(ws, {
+                type: 'sync_mode_update',
+                syncMode: this.syncMode,
                 timestamp: Date.now()
             });
 
@@ -120,14 +165,19 @@ class FTCSIMConnectServer {
                 return;
             }
 
+            if (this.syncMode === 'client-only') {
+                console.log('📕 File changed but sync mode is client-only, ignoring server changes');
+                return;
+            }
+
             try {
                 const newContent = fs.readFileSync(this.watchFile, 'utf8');
                 if (newContent !== this.lastContent) {
-                    console.log('📝 File changed, syncing to clients...');
+                    console.log(`📝 File changed, syncing to clients... (mode: ${this.syncMode})`);
                     this.lastContent = newContent;
                     this.broadcastToClients({
                         type: 'file_content_update',
-                        content: newContent,
+                        content: newContent.replace(/^(import .+;[\r\n]*)+/gm, ''), // Remove dummy import statements before sending to client
                         timestamp: Date.now()
                     });
                     console.log('✅ Sync complete');
@@ -150,22 +200,30 @@ class FTCSIMConnectServer {
                 this.updateLocalFile(message.content);
                 break;
 
-            case 'ping':
-                this.sendToClient(ws, { type: 'pong', timestamp: Date.now() });
-                break;
-
             default:
-                console.log('⚠️  Unknown message type:', message.type);
+                console.log('⚠️ Unknown message type:', message.type);
         }
     }
 
     updateLocalFile(content) {
+        if (this.syncMode === 'server-only') {
+            console.log('📕 Client update received but sync mode is server-only, ignoring client changes.');
+            return;
+        }
+
         try {
             if (content !== this.lastContent) {
-                console.log('📝 Updating local file from client...');
+                console.log(`📝 Updating local file from client... (mode: ${this.syncMode})`);
+                content = content.replace(/^(import .+;[\r\n]*)+/gm, ''); // Making sure theres never an extra import statement
                 this.isUpdatingFromRemote = true;
                 this.lastContent = content;
-                fs.writeFileSync(this.watchFile, content, 'utf8');
+
+                // Adding import statements to prevent VSCode errors
+                const imports = this.config.imports;
+                const importStatements = imports.map(imp => `import ${imp};`).join('\n');
+                const contentWithImports = importStatements + '\n\n' + content;
+
+                fs.writeFileSync(this.watchFile, contentWithImports, 'utf8');
                 setTimeout(() => {
                     this.isUpdatingFromRemote = false;
                 }, 100);
@@ -225,7 +283,8 @@ process.on('SIGTERM', () => {
 const server = new FTCSIMConnectServer({
     port: argv.port,
     host: argv.host,
-    file: argv.file
+    file: argv.file,
+    syncMode: argv['sync-mode'],
 });
 
 server.start().catch(error => {
