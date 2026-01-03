@@ -2,6 +2,9 @@
 
 Real-time syncing between VS Code and ftcsim.org's OnBot Java editor.
 
+## Current Status:
+Mostly working but has some bugs with syncing and I plan on adding more features to this program
+
 ## Features
 - Sync Control: Be able to choose between bidirectional, client-only, and server-only syncing.
 - Instant Updates: Websocket based communication allows for instant changes on either end.
